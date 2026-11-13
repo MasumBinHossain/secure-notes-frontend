@@ -13,10 +13,12 @@ export default function App() {
   });
 
   const [mode, setMode] = useState("login");
+
   const [form, setForm] = useState({
     name: "",
     email: "",
     password: "",
+    interests: "",
   });
   const [notes, setNotes] = useState([]);
   const [title, setTitle] = useState("");
@@ -47,6 +49,7 @@ export default function App() {
     email: "",
     password: "",
     role: "user",
+    interests: "",
   });
 
   async function loadNotes() {
@@ -137,7 +140,13 @@ export default function App() {
     try {
       await apiRequest("/api/admin/users", {
         method: "POST",
-        body: JSON.stringify(adminForm),
+        body: JSON.stringify({
+          ...adminForm,
+          interests: adminForm.interests
+            .split(",")
+            .map((interest) => interest.trim().toLowerCase())
+            .filter(Boolean),
+        }),
       });
 
       setAdminForm({
@@ -145,6 +154,7 @@ export default function App() {
         email: "",
         password: "",
         role: "user",
+        interests: "",
       });
 
       await loadAdminData();
@@ -202,10 +212,28 @@ export default function App() {
       const endpoint =
         mode === "login" ? "/api/auth/login" : "/api/auth/register";
 
+
+
+      const requestBody =
+        mode === "register"
+          ? {
+              ...form,
+              interests: form.interests
+                .split(",")
+                .map((interest) => interest.trim().toLowerCase())
+                .filter(Boolean),
+            }
+          : {
+              email: form.email,
+              password: form.password,
+            };
+
       const data = await apiRequest(endpoint, {
         method: "POST",
-        body: JSON.stringify(form),
+        body: JSON.stringify(requestBody),
       });
+
+
 
       if (mode === "register") {
         setMode("login");
@@ -307,6 +335,8 @@ export default function App() {
                   />
                 )}
 
+                
+
                 <input
                   type="email"
                   placeholder="Email address"
@@ -323,6 +353,22 @@ export default function App() {
                   minLength={8}
                   required
                 />
+
+                {mode === "register" && (
+                  <>
+                    <input
+                      placeholder="Interests (optional)"
+                      value={form.interests}
+                      onChange={(e) =>
+                        setForm({ ...form, interests: e.target.value })
+                      }
+                    />
+                    <small className="field-hint">
+                      Separate multiple interests with commas.
+                      Example: programming, reading, chess.
+                    </small>
+                  </>
+                )}
 
                 <button disabled={loading}>
                   {loading
@@ -553,6 +599,18 @@ export default function App() {
                     minLength={8}
                     required
                   />
+
+                  <input
+                    placeholder="Interests (optional)"
+                    value={adminForm.interests}
+                    onChange={(e) =>
+                      setAdminForm({ ...adminForm, interests: e.target.value })
+                    }
+                  />
+
+                  <small className="field-hint">
+                    Separate multiple interests with commas. Example: programming, reading, chess.
+                  </small>
 
                   <select
                     value={adminForm.role}

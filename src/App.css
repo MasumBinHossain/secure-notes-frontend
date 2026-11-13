@@ -405,3 +405,10 @@ select:focus {
   margin-top: 25px;
   text-align: center;
 }
+
+.field-hint {
+  color: #64748b;
+  font-size: 12px;
+  margin-top: -8px;
+  margin-bottom: 4px;
+}
