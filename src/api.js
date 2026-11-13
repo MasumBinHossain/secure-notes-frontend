@@ -1,6 +1,7 @@
-const API_URL = "https://secure-notes-backend-sk1i.onrender.com";
-
-export async function apiRequest(endpoint, options = {}) {
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  "https://secure-notes-backend-sk1i.onrender.com";
+  export async function apiRequest(endpoint, options = {}) {
   const token = localStorage.getItem("token");
 
   const response = await fetch(`${API_URL}${endpoint}`, {

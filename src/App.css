@@ -412,3 +412,49 @@ select:focus {
   margin-top: -8px;
   margin-bottom: 4px;
 }
+
+/* Restore centered alignment for application content */
+
+.auth-card,
+.container > section > h2,
+.container > section > p,
+.admin-dashboard > h2,
+.admin-dashboard > h3,
+.admin-dashboard .note-form > h3,
+.notes-heading,
+.stat-card,
+.note-card,
+.interest-card,
+.posts-section > h2,
+.posts-section > h3,
+.posts-section > p,
+.message {
+  text-align: center;
+}
+
+/* Keep form fields and tables left-aligned */
+
+input,
+textarea,
+select,
+table {
+  text-align: left;
+}
+
+/* Keep author post content centered */
+
+.author-posts {
+  text-align: center;
+}
+
+
+/* Center author-post action buttons */
+.public-browse .note-card .form-actions,
+.posts-section .note-card .form-actions {
+  justify-content: center;
+}
+
+/* Center admin user form action buttons */
+.admin-dashboard .note-form .form-actions {
+  justify-content: center;
+}

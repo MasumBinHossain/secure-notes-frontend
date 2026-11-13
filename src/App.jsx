@@ -12,6 +12,8 @@ export default function App() {
     }
   });
 
+  const [authChecked, setAuthChecked] = useState(false);
+
   const [mode, setMode] = useState("login");
 
   const [form, setForm] = useState({
@@ -34,16 +36,32 @@ export default function App() {
   const [postContent, setPostContent] = useState("");
   const [userPosts, setUserPosts] = useState(null);
 
+  const [selectedAuthorId, setSelectedAuthorId] = useState(null);
+  const [authorPostsPage, setAuthorPostsPage] = useState(1);
+
   const [userPage, setUserPage] = useState(1);
   const [userTotalPages, setUserTotalPages] = useState(1);
 
+  const [myNotesPage, setMyNotesPage] = useState(1);
+  const [myNotesTotalPages, setMyNotesTotalPages] = useState(1);
+  const [myNotesTotal, setMyNotesTotal] = useState(0);
+
   const [notesPage, setNotesPage] = useState(1);
   const [notesTotalPages, setNotesTotalPages] = useState(1);
+
+  const [totalUsersCount, setTotalUsersCount] = useState(0);
+  const [totalNotesCount, setTotalNotesCount] = useState(0);
+  const [totalGroupsCount, setTotalGroupsCount] = useState(0);
 
   const [postsPage, setPostsPage] = useState(1);
   const [postsTotalPages, setPostsTotalPages] = useState(1);
 
   const [interestGroups, setInterestGroups] = useState([]);
+
+  const [groupsPage, setGroupsPage] = useState(1);
+  const [groupsTotalPages, setGroupsTotalPages] = useState(1);
+
+  const [editingUserId, setEditingUserId] = useState(null);
   const [adminForm, setAdminForm] = useState({
     name: "",
     email: "",
@@ -52,34 +70,92 @@ export default function App() {
     interests: "",
   });
 
-  async function loadNotes() {
+
+  async function syncProfile() {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      localStorage.removeItem("user");
+      setUser(null);
+      setAuthChecked(true);
+      return;
+    }
+
     try {
-      const data = await apiRequest("/api/notes?page=1&limit=50");
+      const data = await apiRequest("/api/auth/me");
+
+      localStorage.setItem("user", JSON.stringify(data.user));
+      setUser(data.user);
+    } catch (err) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      setUser(null);
+      setError("Your session has expired. Please log in again.");
+    } finally {
+      setAuthChecked(true);
+    }
+  }
+
+
+  async function loadNotes(page = myNotesPage) {
+    try {
+      const data = await apiRequest(
+        `/api/notes?page=${page}&limit=10`
+      );
+
       setNotes(data.notes || []);
+      setMyNotesPage(page);
+      setMyNotesTotalPages(
+        Math.max(1, data.pagination?.totalPages || 1)
+      );
+      setMyNotesTotal(data.pagination?.total || 0);
     } catch (err) {
       setError(err.message);
     }
   }
   
-  async function loadAdminData(page = 1, notesCurrentPage = 1) {
+  async function loadAdminData(
+    page = 1,
+    notesCurrentPage = 1,
+    groupsCurrentPage = 1
+  ) {
     try {
       const [usersData, notesData, groupsData] = await Promise.all([
         apiRequest(`/api/admin/users?page=${page}&limit=10`),
         apiRequest(`/api/admin/notes?page=${notesCurrentPage}&limit=10`),
-        apiRequest("/api/admin/users/grouped-by-interests"),
+        apiRequest(
+          `/api/admin/users/grouped-by-interests?page=${groupsCurrentPage}&limit=10`
+        ),
       ]);
 
-      setUsers(usersData.users || []);
-      setAllNotes(notesData.notes || []);
-      setInterestGroups(
-        Array.isArray(groupsData) ? groupsData : groupsData.groups || []
-      );
+      const parsedGroups = Array.isArray(groupsData)
+          ? groupsData
+          : groupsData.groups || [];
 
-      setUserTotalPages(usersData.pagination?.totalPages || 1);
-      setNotesTotalPages(notesData.pagination?.totalPages || 1);
+        setUsers(usersData.users || []);
+        setAllNotes(notesData.notes || []);
+        setInterestGroups(parsedGroups);
+
+        setUserTotalPages(usersData.pagination?.totalPages || 1);
+        setNotesTotalPages(notesData.pagination?.totalPages || 1);
+
+        setGroupsTotalPages(
+          Math.max(1, groupsData.pagination?.totalPages || 1)
+        );
+
+        setTotalUsersCount(
+          usersData.pagination?.total ?? (usersData.users || []).length
+        );
+        setTotalNotesCount(
+          notesData.pagination?.total ?? (notesData.notes || []).length
+        );
+        setTotalGroupsCount(
+          groupsData.pagination?.total ?? parsedGroups.length
+        );
 
       setUserPage(page);
       setNotesPage(notesCurrentPage);
+      setGroupsPage(groupsCurrentPage);
     } catch (err) {
       setError(err.message);
     }
@@ -122,32 +198,72 @@ export default function App() {
     }
   }
 
-  async function loadUserPosts(userId) {
+  async function loadUserPosts(userId, page = 1) {
     try {
-      const data = await apiRequest(`/api/posts/user/${userId}`);
+      const data = await apiRequest(
+        `/api/posts/user/${userId}?page=${page}&limit=10`
+      );
+
       setUserPosts(data);
+      setSelectedAuthorId(userId);
+      setAuthorPostsPage(page);
     } catch (err) {
       setError(err.message);
     }
   }
 
+  function startEditUser(item) {
+    setEditingUserId(item._id);
 
+    setAdminForm({
+      name: item.name || "",
+      email: item.email || "",
+      password: "",
+      role: item.role || "user",
+      interests: Array.isArray(item.interests)
+        ? item.interests.join(", ")
+        : "",
+    });
+  }
 
-  async function createUser(e) {
+  async function saveAdminUser(e) {
     e.preventDefault();
     setError("");
 
+    const parsedInterests = (adminForm.interests || "")
+      .split(",")
+      .map((interest) => interest.trim().toLowerCase())
+      .filter(Boolean);
+
     try {
-      await apiRequest("/api/admin/users", {
-        method: "POST",
-        body: JSON.stringify({
-          ...adminForm,
-          interests: adminForm.interests
-            .split(",")
-            .map((interest) => interest.trim().toLowerCase())
-            .filter(Boolean),
-        }),
-      });
+      if (editingUserId) {
+        const payload = {
+          name: adminForm.name,
+          email: adminForm.email,
+          role: adminForm.role,
+          interests: parsedInterests,
+        };
+
+        // Only update the password when a new one is provided.
+        if (adminForm.password.trim()) {
+          payload.password = adminForm.password;
+        }
+
+        await apiRequest(`/api/admin/users/${editingUserId}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+      } else {
+        await apiRequest("/api/admin/users", {
+          method: "POST",
+          body: JSON.stringify({
+            ...adminForm,
+            interests: parsedInterests,
+          }),
+        });
+      }
+
+      setEditingUserId(null);
 
       setAdminForm({
         name: "",
@@ -190,8 +306,13 @@ export default function App() {
     }
   }
 
+  useEffect(() => {
+    syncProfile();
+  }, []);
 
   useEffect(() => {
+    if (!authChecked) return;
+
     loadPosts();
 
     if (user) {
@@ -201,7 +322,7 @@ export default function App() {
         loadAdminData();
       }
     }
-  }, [user]);
+  }, [user, authChecked]);
 
   async function handleAuth(e) {
     e.preventDefault();
@@ -242,7 +363,12 @@ export default function App() {
         localStorage.setItem("token", data.token);
         localStorage.setItem("user", JSON.stringify(data.user));
         setUser(data.user);
-        setForm({ name: "", email: "", password: "" });
+        setForm({
+          name: "",
+          email: "",
+          password: "",
+          interests: "",
+        });
       }
     } catch (err) {
       setError(err.message);
@@ -453,15 +579,56 @@ export default function App() {
 
               {userPosts && (
                 <div className="note-card author-posts">
-                  <h3>Posts by {userPosts.name}</h3>
+                  <h3>
+                    Posts by {userPosts.name} (Total:{" "}
+                    {userPosts.pagination?.total ?? userPosts.posts?.length ?? 0})
+                  </h3>
 
-                  {userPosts.posts?.map((post) => (
-                    <p key={post._id}>{post.title}</p>
-                  ))}
+                  {userPosts.posts?.length === 0 ? (
+                    <p>No posts found for this author.</p>
+                  ) : (
+                    userPosts.posts?.map((post) => (
+                      <p key={post._id}>{post.title}</p>
+                    ))
+                  )}
+
+                  {userPosts.pagination &&
+                    userPosts.pagination.totalPages > 1 && (
+                      <div className="pagination">
+                        <button
+                          className="secondary"
+                          disabled={authorPostsPage <= 1}
+                          onClick={() =>
+                            loadUserPosts(selectedAuthorId, authorPostsPage - 1)
+                          }
+                        >
+                          Previous
+                        </button>
+
+                        <span>
+                          Page {authorPostsPage} of {userPosts.pagination.totalPages}
+                        </span>
+
+                        <button
+                          className="secondary"
+                          disabled={
+                            authorPostsPage >= userPosts.pagination.totalPages
+                          }
+                          onClick={() =>
+                            loadUserPosts(selectedAuthorId, authorPostsPage + 1)
+                          }
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
 
                   <button
                     className="secondary"
-                    onClick={() => setUserPosts(null)}
+                    onClick={() => {
+                      setUserPosts(null);
+                      setSelectedAuthorId(null);
+                    }}
                   >
                     Close
                   </button>
@@ -536,7 +703,7 @@ export default function App() {
               </div>
             </form>
 
-            <h2 className="notes-heading">Your Notes ({notes.length})</h2>
+            <h2 className="notes-heading">Your Notes ({myNotesTotal})</h2>
 
             {notes.length === 0 ? (
               <p>No notes yet. Create your first note above.</p>
@@ -558,6 +725,27 @@ export default function App() {
                 ))}
               </div>
             )}
+              <div className="pagination">
+                <button
+                  className="secondary"
+                  disabled={myNotesPage <= 1}
+                  onClick={() => loadNotes(myNotesPage - 1)}
+                >
+                  Previous
+                </button>
+
+                <span>
+                  Page {myNotesPage} of {myNotesTotalPages}
+                </span>
+
+                <button
+                  className="secondary"
+                  disabled={myNotesPage >= myNotesTotalPages}
+                  onClick={() => loadNotes(myNotesPage + 1)}
+                >
+                  Next
+                </button>
+              </div>
              </>
             )}
 
@@ -567,9 +755,9 @@ export default function App() {
                 <h2>Admin Dashboard</h2>
                 
               <div className="note-form">
-                <h3>Create New User</h3>
+                <h3>{editingUserId ? "Edit User" : "Create New User"}</h3>
 
-                <form onSubmit={createUser}>
+                <form onSubmit={saveAdminUser}>
                   <input
                     placeholder="Full name"
                     value={adminForm.name}
@@ -591,13 +779,17 @@ export default function App() {
 
                   <input
                     type="password"
-                    placeholder="Password (minimum 8 characters)"
+                    placeholder={
+                      editingUserId
+                        ? "New password (leave blank to keep current)"
+                        : "Password (minimum 8 characters)"
+                    }
                     value={adminForm.password}
                     onChange={(e) =>
                       setAdminForm({ ...adminForm, password: e.target.value })
                     }
                     minLength={8}
-                    required
+                    required={!editingUserId}
                   />
 
                   <input
@@ -622,23 +814,46 @@ export default function App() {
                     <option value="admin">Administrator</option>
                   </select>
 
-                  <button type="submit">Create User</button>
+                  <div className="form-actions">
+                    <button type="submit">
+                      {editingUserId ? "Update User" : "Create User"}
+                    </button>
+
+                    {editingUserId && (
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => {
+                          setEditingUserId(null);
+                          setAdminForm({
+                            name: "",
+                            email: "",
+                            password: "",
+                            role: "user",
+                            interests: "",
+                          });
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
                 </form>
               </div>
 
                 <div className="admin-stats">
                   <div className="stat-card">
-                    <h3>{users.length}</h3>
+                    <h3>{totalUsersCount}</h3>
                     <p>Total Users</p>
                   </div>
 
                   <div className="stat-card">
-                    <h3>{allNotes.length}</h3>
+                    <h3>{totalNotesCount}</h3>
                     <p>Total Notes</p>
                   </div>
 
                   <div className="stat-card">
-                    <h3>{interestGroups.length}</h3>
+                    <h3>{totalGroupsCount}</h3>
                     <p>Interest Groups</p>
                   </div>
                 </div>
@@ -652,6 +867,7 @@ export default function App() {
                         <th>Name</th>
                         <th>Email</th>
                         <th>Role</th>
+                        <th>Interests</th>
                         <th>Actions</th>
                       </tr>
                     </thead>
@@ -662,7 +878,22 @@ export default function App() {
                           <td>{item.name}</td>
                           <td>{item.email}</td>
                           <td>{item.role}</td>
+
+                          {/* User interests */}
                           <td>
+                            {Array.isArray(item.interests) && item.interests.length > 0
+                              ? item.interests.join(", ")
+                              : "—"}
+                          </td>
+
+                          {/* Action buttons */}
+                          <td>
+                            <button
+                              className="secondary"
+                              onClick={() => startEditUser(item)}
+                            >
+                              Edit
+                            </button>
                             <button
                               className="secondary"
                               onClick={() => {
@@ -692,7 +923,7 @@ export default function App() {
                   <button
                     className="secondary"
                     disabled={userPage <= 1}
-                    onClick={() => loadAdminData(userPage - 1, notesPage)}
+                    onClick={() => loadAdminData(userPage - 1, notesPage, groupsPage)}
                   >
                     Previous
                   </button>
@@ -704,7 +935,7 @@ export default function App() {
                   <button
                     className="secondary"
                     disabled={userPage >= userTotalPages}
-                    onClick={() => loadAdminData(userPage + 1, notesPage)}
+                    onClick={() => loadAdminData(userPage + 1, notesPage, groupsPage)}
                   >
                     Next
                   </button>
@@ -728,7 +959,7 @@ export default function App() {
                   <button
                     className="secondary"
                     disabled={notesPage <= 1}
-                    onClick={() => loadAdminData(userPage, notesPage - 1)}
+                    onClick={() => loadAdminData(userPage, notesPage - 1, groupsPage)}
                   >
                     Previous
                   </button>
@@ -740,7 +971,7 @@ export default function App() {
                   <button
                     className="secondary"
                     disabled={notesPage >= notesTotalPages}
-                    onClick={() => loadAdminData(userPage, notesPage + 1)}
+                    onClick={() => loadAdminData(userPage, notesPage + 1, groupsPage)}
                   >
                     Next
                   </button>
@@ -777,7 +1008,32 @@ export default function App() {
                   )}
                 </div>
 
+                {/* Interest Groups Pagination */}
+                <div className="pagination">
+                  <button
+                    className="secondary"
+                    disabled={groupsPage <= 1}
+                    onClick={() =>
+                      loadAdminData(userPage, notesPage, groupsPage - 1)
+                    }
+                  >
+                    Previous
+                  </button>
 
+                  <span>
+                    Page {groupsPage} of {groupsTotalPages}
+                  </span>
+
+                  <button
+                    className="secondary"
+                    disabled={groupsPage >= groupsTotalPages}
+                    onClick={() =>
+                      loadAdminData(userPage, notesPage, groupsPage + 1)
+                    }
+                  >
+                    Next
+                  </button>
+                </div>
 
               </div>
             )}
@@ -858,14 +1114,57 @@ export default function App() {
 
 
             {userPosts && (
-              <div className="note-card">
-                <h3>Posts by {userPosts.name}</h3>
-                {userPosts.posts?.map((post) => (
-                  <p key={post._id}>{post.title}</p>
-                ))}
+              <div className="note-card author-posts">
+                <h3>
+                  Posts by {userPosts.name} (Total:{" "}
+                  {userPosts.pagination?.total ?? userPosts.posts?.length ?? 0})
+                </h3>
+
+                {userPosts.posts?.length === 0 ? (
+                  <p>No posts found for this author.</p>
+                ) : (
+                  userPosts.posts?.map((post) => (
+                    <p key={post._id}>{post.title}</p>
+                  ))
+                )}
+
+                {userPosts.pagination &&
+                  userPosts.pagination.totalPages > 1 && (
+                    <div className="pagination">
+                      <button
+                        className="secondary"
+                        disabled={authorPostsPage <= 1}
+                        onClick={() =>
+                          loadUserPosts(selectedAuthorId, authorPostsPage - 1)
+                        }
+                      >
+                        Previous
+                      </button>
+
+                      <span>
+                        Page {authorPostsPage} of {userPosts.pagination.totalPages}
+                      </span>
+
+                      <button
+                        className="secondary"
+                        disabled={
+                          authorPostsPage >= userPosts.pagination.totalPages
+                        }
+                        onClick={() =>
+                          loadUserPosts(selectedAuthorId, authorPostsPage + 1)
+                        }
+                      >
+                        Next
+                      </button>
+                    </div>
+                  )}
+
                 <button
                   className="secondary"
-                  onClick={() => setUserPosts(null)}
+                  onClick={() => {
+                    setUserPosts(null);
+                    setSelectedAuthorId(null);
+                  }}
                 >
                   Close
                 </button>

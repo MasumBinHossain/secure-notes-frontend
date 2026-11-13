@@ -79,6 +79,16 @@ Install dependencies:
 npm install
 ```
 
+## Environment Variables (Optional)
+
+By default, the frontend connects to the deployed Render backend.
+
+To connect to a local backend during development, create a `.env.local` file in the frontend root directory:
+
+```env
+VITE_API_URL=http://localhost:5000
+```
+
 ## Run Locally
 
 Start the Vite development server:
