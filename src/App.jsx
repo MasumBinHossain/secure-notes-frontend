@@ -290,57 +290,141 @@ export default function App() {
       <main className="container">
         {error && <div className="message">{error}</div>}
 
+        
         {!user ? (
-          <section className="auth-card">
-            <h2>{mode === "login" ? "Welcome Back" : "Create Account"}</h2>
-            <p>Securely manage your personal notes.</p>
+          <>
+            <section className="auth-card">
+              <h2>{mode === "login" ? "Welcome Back" : "Create Account"}</h2>
+              <p>Securely manage your personal notes.</p>
 
-            <form onSubmit={handleAuth}>
-              {mode === "register" && (
+              <form onSubmit={handleAuth}>
+                {mode === "register" && (
+                  <input
+                    placeholder="Full name"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    required
+                  />
+                )}
+
                 <input
-                  placeholder="Full name"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  type="email"
+                  placeholder="Email address"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
                   required
                 />
+
+                <input
+                  type="password"
+                  placeholder="Password (minimum 8 characters)"
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  minLength={8}
+                  required
+                />
+
+                <button disabled={loading}>
+                  {loading
+                    ? "Please wait..."
+                    : mode === "login"
+                      ? "Login"
+                      : "Register"}
+                </button>
+              </form>
+
+              <p className="switch">
+                {mode === "login" ? "New here?" : "Already registered?"}
+                <button
+                  className="link-button"
+                  onClick={() => {
+                    setMode(mode === "login" ? "register" : "login");
+                    setError("");
+                  }}
+                >
+                  {mode === "login" ? "Create account" : "Login"}
+                </button>
+              </p>
+            </section>
+
+            <section className="public-browse">
+              <h2>Public Posts</h2>
+              <p>Explore posts shared by our community. No login required.</p>
+
+              {posts.length === 0 ? (
+                <p>No public posts available yet.</p>
+              ) : (
+                <div className="notes-grid">
+                  {posts.map((post) => (
+                    <article className="note-card" key={post._id}>
+                      <h3>{post.title}</h3>
+                      <p>{post.content}</p>
+
+                      <small>
+                        By: {post.user?.name || "Unknown"}
+                      </small>
+
+                      <div className="form-actions">
+                        <button
+                          className="secondary"
+                          onClick={() => {
+                            const authorId = post.user?._id;
+
+                            if (authorId) {
+                              loadUserPosts(authorId);
+                            }
+                          }}
+                        >
+                          View Author's Posts
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
               )}
 
-              <input
-                type="email"
-                placeholder="Email address"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                required
-              />
+              <div className="pagination">
+                <button
+                  className="secondary"
+                  disabled={postsPage <= 1}
+                  onClick={() => loadPosts(postsPage - 1)}
+                >
+                  Previous
+                </button>
 
-              <input
-                type="password"
-                placeholder="Password (minimum 8 characters)"
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                minLength={8}
-                required
-              />
+                <span>
+                  Page {postsPage} of {postsTotalPages}
+                </span>
 
-              <button disabled={loading}>
-                {loading ? "Please wait..." : mode === "login" ? "Login" : "Register"}
-              </button>
-            </form>
+                <button
+                  className="secondary"
+                  disabled={postsPage >= postsTotalPages}
+                  onClick={() => loadPosts(postsPage + 1)}
+                >
+                  Next
+                </button>
+              </div>
 
-            <p className="switch">
-              {mode === "login" ? "New here?" : "Already registered?"}
-              <button
-                className="link-button"
-                onClick={() => {
-                  setMode(mode === "login" ? "register" : "login");
-                  setError("");
-                }}
-              >
-                {mode === "login" ? "Create account" : "Login"}
-              </button>
-            </p>
-          </section>
+              {userPosts && (
+                <div className="note-card author-posts">
+                  <h3>Posts by {userPosts.name}</h3>
+
+                  {userPosts.posts?.map((post) => (
+                    <p key={post._id}>{post.title}</p>
+                  ))}
+
+                  <button
+                    className="secondary"
+                    onClick={() => setUserPosts(null)}
+                  >
+                    Close
+                  </button>
+                </div>
+              )}
+            </section>
+          </>
         ) : (
+
           <section>
             <h2>My Notes</h2>
             <p>Create and manage your private notes.</p>

@@ -390,3 +390,18 @@ select:focus {
   font-size: 12px;
   overflow-wrap: anywhere;
 }
+
+.public-browse {
+  width: 100%;
+  margin: 45px auto;
+}
+
+.public-browse > h2,
+.public-browse > p {
+  text-align: center;
+}
+
+.author-posts {
+  margin-top: 25px;
+  text-align: center;
+}
