@@ -1,16 +1,126 @@
-# React + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+# Secure Notes — Frontend
 
-Currently, two official plugins are available:
+A React-based frontend for the Secure Notes application. It integrates with a REST API built using Express.js, MongoDB and JWT authentication.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Live Application
 
-## React Compiler
+**Website:** https://secure-notes-frontend-bay.vercel.app/
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+**Backend API:** https://secure-notes-backend-sk1i.onrender.com/
 
-## Expanding the ESLint configuration
+## Features
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### Authentication
+- User registration and login.
+- JWT-based authentication.
+- Registration with optional interests.
+
+### Notes
+- Create, view, update and delete personal notes.
+- Notes are accessible only to their owners.
+
+### Admin Dashboard
+- View registered users.
+- Create and delete users.
+- Update user roles.
+- View everyone's notes.
+- View users grouped by interests.
+
+### Public Posts
+- Browse public posts without logging in.
+- Authenticated users can publish posts.
+- View all posts belonging to a specific author.
+- Paginated post listing.
+
+## Technology Stack
+
+- React
+- Vite
+- JavaScript
+- CSS
+- Fetch API
+
+## Project Structure
+
+```text
+frontend/
+├── public/
+├── src/
+│   ├── assets/
+│   ├── api.js
+│   ├── App.jsx
+│   ├── App.css
+│   ├── index.css
+│   └── main.jsx
+├── index.html
+├── package.json
+├── package-lock.json
+└── vite.config.js
+```
+
+## Requirements
+
+- Node.js
+- npm
+
+## Installation
+
+Clone the repository:
+
+```bash
+git clone https://github.com/MasumBinHossain/secure-notes-frontend.git
+cd secure-notes-frontend
+```
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+## Run Locally
+
+Start the Vite development server:
+
+```bash
+npm run dev
+```
+
+Open the local URL displayed in your terminal, usually:
+
+```text
+http://localhost:5173/
+```
+
+## Production Build
+
+Build the application:
+
+```bash
+npm run build
+```
+
+The optimized production files will be generated in the `dist` directory.
+
+To preview the production build locally:
+
+```bash
+npm run preview
+```
+
+## Backend Integration
+
+The frontend communicates with the deployed backend through `src/api.js`.
+
+The API helper handles:
+- HTTP requests.
+- JSON request and response handling.
+- JWT authorization headers.
+- API error responses.
+
+## Deployment
+
+The frontend is deployed on Vercel and automatically redeploys when changes are pushed to the main GitHub branch.
+
+**GitHub Repository:** https://github.com/MasumBinHossain/secure-notes-frontend
